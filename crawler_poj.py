@@ -129,11 +129,15 @@ def get_page_source(url):
 
 @timelimited(60)
 def JudgeIdExist(id):
+    s(5)
     Print('判断'+str(id)+'题是否存在...')
     url='http://poj.org/problem?id='+id
     html=get_page_source(url)
     soup=BeautifulSoup(html,'lxml')
     list=soup.findAll('p', {'class':'pst'},limit=1)
+    if list==None :
+	s(10)
+	return False
     if(len(list)==1):
          Print(str(id)+'题目存在')
          return True
@@ -171,6 +175,7 @@ def FindCppList(url):
     cpplist=[]
     soup=BeautifulSoup(get_page_source(url),'lxml')
     list=soup.findAll('pre',{'class':'cpp','name':'code'})
+    if list==None : return cpplist
     for i in list:
         cpp=i.get_text()
         if '#include' in cpp:
@@ -182,6 +187,7 @@ def FindCppList(url):
 def CppSubmit(driver,id,cpp,url,index):
     Print('开始提交这条链接  '+url+'  的第+'+str(index)+'个cpp')
     driver.get("http://poj.org/submit?problem_id="+id)
+    driver.find_element_by_xpath('/html/body/table[2]/tbody/tr/td/form/div/select').find_elements_by_tag_name("option")[0].click()  
     ele=driver.find_element_by_name('source')
     ele.send_keys('#include<stdio.h>\n#include<math.h>\n#include<string.h>\n')
     ele.send_keys(cpp)
@@ -189,11 +195,11 @@ def CppSubmit(driver,id,cpp,url,index):
     driver.refresh()
     
 @timelimited(60) 
-def IsAc(id):
-    s(2)
+def IsAc(id,UserName):
+    s(5)
     Print('判断是否通过')
     driver=GetHeaderDriver()
-    driver.get('http://poj.org/status?problem_id='+id+'&user_id=Caolulu&result=&language=')
+    driver.get('http://poj.org/status?problem_id='+str(id)+'&user_id='+UserName+'&result=&language=')
     driver.refresh()
     driver.get_screenshot_as_file('IsAc.png')
     sta=driver.find_element_by_xpath('/html/body/table[2]/tbody/tr[2]/td[4]')
@@ -211,53 +217,49 @@ def IsAc(id):
 
 @timelimited(1800)  
 def main():
-    try:
-        Print ('start crawler_poj......')
-        idmax=6000
-        idmin=GetIdMin()
-        UserName='caolulu_test1'
-        UserPasswd='caolulu258'
-        ac=0.0
-        wa=0.0
-        AcProbability=0
-        Print('访问poj网页.....')
-        driver=LoginPoj(UserName,UserPasswd)
-        Print("登录成功!  开始爬虫!")
-        for id in range(idmin,idmax):
+    Print ('start crawler_poj......')
+    idmax=6000
+    idmin=GetIdMin()
+    UserName='caolulu_test1'
+    UserPasswd='caolulu258'
+    ac=0.0
+    wa=0.0
+    AcProbability=0
+    Print('访问poj网页.....')
+    driver=LoginPoj(UserName,UserPasswd)
+    Print("登录成功!  开始爬虫!")
+    for id in range(idmin,idmax):
+        try:
             Print('**********开始处理'+str(id)+'题**************')
             if ac!=0:Print('目前通过率: '+str(ac/(wa+ac)*100)+'%')
             else:Print('目前通过率: 0%')
-            try:
-                acflag=False
-                if JudgeIdExist(str(id)):
-                    urllist=FindUrlList(str(id))
-                    for url in urllist:
-                        try:
-                            if(acflag==True): break
-                            cpplist=FindCppList(url)
-                            for i in range(len(cpplist)):
+            acflag=False
+            if JudgeIdExist(str(id)):
+                urllist=FindUrlList(str(id))
+                for url in urllist:
+                    try:
+                        if(acflag==True): break
+                        cpplist=FindCppList(str(url))
+                        for i in range(len(cpplist)):
+                            try:
                                 cpp=cpplist[i]
-                                try:
-                                    if(acflag==True): break
-                                    driver=LoginPoj(UserName, UserPasswd)
-#                                     s(10)
-                                    CppSubmit(driver,str(id),cpp.replace('\t','    '),url,i)
-                                    acflag=IsAc(str(id))
-                                    if acflag:
-                                        ac+=1
-                                        with open('/root/workspaces/CrawlerForPoj/src/Poj_IdMin.txt','w') as f:
-                                            f.write(str(id))
-                                            f.close()
-                                    else:wa+=1
-                                except Exception,e:
-                                    Print('find error:'+e)
-                        except Exception,e:
-                            Print('find error:'+e)
-            except Exception,e:
-                Print('find error:'+e)
-    except Exception,e:
-        Print('find error:'+str(e))
-        restart_pro()     
+                                if(acflag==True): break
+                                driver=LoginPoj(UserName, UserPasswd)
+                                s(10)
+                                CppSubmit(driver,str(id),cpp.replace('\t','    '),url,i)
+                                acflag=IsAc(str(id),UserName)
+                                if acflag:
+                                    ac+=1
+                                    with open('/root/workspaces/CrawlerForPoj/src/Poj_IdMin.txt','w') as f:
+                                        f.write(str(id))
+                                        f.close()
+                                else:wa+=1
+                            except Exception,e:
+                                Print('find error:'+str(e))
+                    except Exception,e:
+                        Print('find error:'+str(e))
+        except Exception,e:
+            Print('find error:'+str(e))
     
 if __name__ == "__main__":
     try:
