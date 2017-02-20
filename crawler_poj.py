@@ -67,8 +67,7 @@ def restart_pro():
     Print ('[*] 遇到故障，正在重启…..…')
     python = sys.executable
     os.execl(python, python, * sys.argv)
-    
-@timelimited(60)   
+       
 def s(t):
     time.sleep(t)
     
@@ -102,8 +101,16 @@ def GetHeaderDriver():
     driver= webdriver.PhantomJS(desired_capabilities=desired_capabilities, service_args=['--load-images=no'])
     return driver   
  
-@timelimited(60)
-def LoginPoj(UserName,UserPasswd):
+@timelimited(120)
+def LoginPoj(driver,UserName,UserPasswd):
+    
+    driver.get("http://www.poj.org/")
+    redec=re.compile(UserName,re.S|re.I|re.M)
+    list=re.findall(redec, driver.page_source)  ###############################3
+    if len(list)!=0:
+        print "已经登录了!"
+        return driver
+   
     driver=GetHeaderDriver()
     driver.get('http://www.poj.org/')
     driver.find_element_by_name('user_id1').send_keys(UserName)
@@ -183,11 +190,11 @@ def FindCppList(url):
         if len(cpplist)>5 :break
     Print('这条链接共找到'+str(len(cpplist))+'个cpp')
     return cpplist
-@timelimited(60) 
+@timelimited(120) 
 def CppSubmit(driver,id,cpp,url,index):
     Print('开始提交这条链接  '+url+'  的第+'+str(index)+'个cpp')
     driver.get("http://poj.org/submit?problem_id="+id)
-    driver.find_element_by_xpath('/html/body/table[2]/tbody/tr/td/form/div/select').find_elements_by_tag_name("option")[0].click()  
+    driver.find_element_by_xpath('/html/body/table[2]/tbody/tr/td/form/div/select').find_elements_by_tag_name("option")[0].click()
     ele=driver.find_element_by_name('source')
     ele.send_keys('#include<stdio.h>\n#include<math.h>\n#include<string.h>\n')
     ele.send_keys(cpp)
@@ -196,12 +203,12 @@ def CppSubmit(driver,id,cpp,url,index):
     
 @timelimited(60) 
 def IsAc(id,UserName):
-    s(5)
+    s(2)
     Print('判断是否通过')
     driver=GetHeaderDriver()
     driver.get('http://poj.org/status?problem_id='+str(id)+'&user_id='+UserName+'&result=&language=')
     driver.refresh()
-    driver.get_screenshot_as_file('IsAc.png')
+
     sta=driver.find_element_by_xpath('/html/body/table[2]/tbody/tr[2]/td[4]')
     while sta.text=='Queuing' or sta.text=='Compiling' or sta.text=='Running & Judging':
         Print('队列等待中...')
@@ -218,7 +225,7 @@ def IsAc(id,UserName):
 @timelimited(1800)  
 def main():
     Print ('start crawler_poj......')
-    idmax=6000
+    idmax=4054
     idmin=GetIdMin()
     UserName='caolulu_test1'
     UserPasswd='caolulu258'
@@ -226,7 +233,8 @@ def main():
     wa=0.0
     AcProbability=0
     Print('访问poj网页.....')
-    driver=LoginPoj(UserName,UserPasswd)
+    driver=GetHeaderDriver()
+    driver=LoginPoj(driver,UserName,UserPasswd)
     Print("登录成功!  开始爬虫!")
     for id in range(idmin,idmax):
         try:
@@ -244,8 +252,8 @@ def main():
                             try:
                                 cpp=cpplist[i]
                                 if(acflag==True): break
-                                driver=LoginPoj(UserName, UserPasswd)
-                                s(10)
+                                s(60)
+                                driver=LoginPoj(driver,UserName, UserPasswd)
                                 CppSubmit(driver,str(id),cpp.replace('\t','    '),url,i)
                                 acflag=IsAc(str(id),UserName)
                                 if acflag:
